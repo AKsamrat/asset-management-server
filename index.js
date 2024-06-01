@@ -123,6 +123,14 @@ async function run() {
       res.send(result);
     });
 
+    //for role check=====================
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
     //for admin check
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
