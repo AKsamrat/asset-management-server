@@ -68,6 +68,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const userCollection = client.db('assetManagement').collection('users');
+    const assetCollection = client.db('assetManagement').collection('assets');
     const paymentCollection = client
       .db('assetManagement')
       .collection('payments');
@@ -208,6 +209,61 @@ async function run() {
         res.send(result);
       }
     );
+
+    //asset add api =========================>>>>
+    app.post('/addAsset', async (req, res) => {
+      const assetData = req.body;
+      const pName = assetData.productName;
+      const query = { productName: pName };
+      const isExist = await assetCollection.findOne(query);
+      if (isExist) return 'Product Already exist';
+      const result = await assetCollection.insertOne(assetData);
+      res.send(result);
+    });
+
+    //get all asset api==========<<<<<<<<<<<<<<<
+    app.get('/all-assets', async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const search = req.query.search;
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      let query = {
+        productName: { $regex: search, $options: 'i' },
+      };
+      if (filter) query.productType = filter;
+      let options = {};
+      if (sort)
+        options = {
+          sort: {
+            productQty: sort === 'asc' ? 1 : -1,
+          },
+        };
+      console.log(sort);
+      // console.log(filter);
+      const result = await assetCollection
+        .find(query)
+        .sort({ productQty: sort === 'asc' ? 1 : -1 })
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    //delete asset from database======-----------------
+    app.delete('/asset/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assetCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //pagination asset----------------------
+
+    app.get('/assetsCount', async (req, res) => {
+      const count = await assetCollection.estimatedDocumentCount();
+      res.send({ count });
+    });
 
     //payment system implementation
 
