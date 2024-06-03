@@ -210,25 +210,7 @@ async function run() {
       res.send(result);
     });
 
-    //for admin check
-    app.get('/users/admin/:email', verifyToken, async (req, res) => {
-      const email = req.params.email;
-      console.log(email);
-      console.log(req.decoded.email);
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: 'forbidden access' });
-      }
-      const query = { email: email };
-      const user = await userCollection.findOne(query);
-      let admin = false;
-      if (user) {
-        admin = user?.role === 'admin';
-      }
-      console.log(admin);
-      res.send({ admin });
-    });
-
-    //save user data in db
+    //save user data in db hr and employee
 
     app.put('/user', async (req, res) => {
       const user = req.body;
@@ -251,23 +233,16 @@ async function run() {
       res.send(result);
     });
 
-    app.post('/users', async (req, res) => {
-      const user = req.body;
-      const query = { email: user.email };
-      const existingUser = await userCollection.findOne(query);
-      if (existingUser) {
-        return res.send({ message: 'user already exist' });
-      }
-      const result = await userCollection.insertOne(user);
-      res.send(result);
-    });
-
-    app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await userCollection.deleteOne(query);
-      res.send(result);
-    });
+    // app.post('/users', async (req, res) => {
+    //   const user = req.body;
+    //   const query = { email: user.email };
+    //   const existingUser = await userCollection.findOne(query);
+    //   if (existingUser) {
+    //     return res.send({ message: 'user already exist' });
+    //   }
+    //   const result = await userCollection.insertOne(user);
+    //   res.send(result);
+    // });
 
     //make admin
 
@@ -311,17 +286,32 @@ async function run() {
       };
       if (filter) query.productType = filter;
       let options = {};
-      // if (sort)
-      //   options = {
-      //     sort: {
-      //       productQty: sort === 'asc' ? 1 : -1,
-      //     },
-      //   };
-      // console.log(sort);
-      // console.log(filter);
+
       const result = await assetCollection
         .find(query)
         .sort({ productQty: sort === 'asc' ? 1 : -1 })
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    //get all asset asset for employee ======<<<<<<<<<<<<<<
+
+    app.get('/employee-assets', async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const search = req.query.search;
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      let query = {
+        productName: { $regex: search, $options: 'i' },
+      };
+      if (filter) query.productType = filter;
+      if (sort) query.status = sort;
+
+      const result = await assetCollection
+        .find(query)
         .skip(page * size)
         .limit(size)
         .toArray();
@@ -333,6 +323,25 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await assetCollection.deleteOne(query);
+      res.send(result);
+    });
+    //load single asset for update
+    app.get('/singleAsset/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assetCollection.findOne(query);
+      res.send(result);
+    });
+
+    //update asset data
+    app.put('/updateAsset/:id', async (req, res) => {
+      const id = req.params.id;
+      const assetData = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: assetData,
+      };
+      const result = await assetCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
