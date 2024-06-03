@@ -72,6 +72,7 @@ async function run() {
     const paymentCollection = client
       .db('assetManagement')
       .collection('payments');
+    const teamCollection = client.db('assetManagement').collection('teams');
 
     app.post('/jwt', async (req, res) => {
       const email = req.body;
@@ -118,10 +119,24 @@ async function run() {
     //user related
 
     //load all user
-    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+    app.get('/all-users', async (req, res) => {
       // console.log(req.headers);
-      const result = await userCollection.find().toArray();
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const filter = {
+        role: 'employee',
+      };
+      const result = await userCollection
+        .find(filter)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
+    });
+    //for pagination count
+    app.get('/userCount', async (req, res) => {
+      const count = await userCollection.estimatedDocumentCount();
+      res.send({ count });
     });
 
     //for role check=====================
@@ -130,6 +145,43 @@ async function run() {
       const query = { email: email };
       const result = await userCollection.findOne(query);
       res.send(result);
+    });
+
+    //add employee in my team
+    app.post('/add-employee/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const companyEmployee = await userCollection.findOne(query);
+      const result = await teamCollection.insertOne(companyEmployee);
+      res.send(result);
+    });
+
+    //add employe info
+    app.patch('/employee-infoAdd/:id', async (req, res) => {
+      const hrData = req.body;
+      const id = req.params.id;
+      const email = hrData.hrEmail;
+      console.log(email);
+      const hrQuery = { email: email };
+      const findHrData = await userCollection.findOne(hrQuery);
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          hrData,
+          companyLogo: findHrData?.companyLogo,
+        },
+      };
+
+      const result = await userCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
+    //for employee count
+    app.get('/employeeCount', async (req, res) => {
+      const count = await teamCollection.estimatedDocumentCount();
+      res.send({ count });
     });
 
     //for admin check
@@ -233,13 +285,13 @@ async function run() {
       };
       if (filter) query.productType = filter;
       let options = {};
-      if (sort)
-        options = {
-          sort: {
-            productQty: sort === 'asc' ? 1 : -1,
-          },
-        };
-      console.log(sort);
+      // if (sort)
+      //   options = {
+      //     sort: {
+      //       productQty: sort === 'asc' ? 1 : -1,
+      //     },
+      //   };
+      // console.log(sort);
       // console.log(filter);
       const result = await assetCollection
         .find(query)
@@ -280,11 +332,21 @@ async function run() {
 
     app.post('/payments', async (req, res) => {
       const payment = req.body;
+      const email = req.body.email;
+      const query = { email };
       // payment.menuItemId = payment.menuItemId.map(id => new ObjectId(id));
       // payment.cartId = payment.cartId.map(id => new ObjectId(id));
       const result = await paymentCollection.insertOne(payment);
 
       res.send(result);
+    });
+
+    //count employee==================<<<<<<<<<<<<<<<<<<
+    app.get('/employee-count/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const myPayment = await paymentCollection.find(query).toArray();
+      res.send(myPayment);
     });
 
     // app.get('/payments/:email', verifyToken, async (req, res) => {
