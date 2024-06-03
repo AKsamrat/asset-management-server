@@ -184,6 +184,32 @@ async function run() {
       res.send({ count });
     });
 
+    //get my employee===============<<<<<<<<<<<<<<<<<<my-employee
+    app.get('/my-employee', async (req, res) => {
+      // console.log(req.headers);
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+
+      const result = await teamCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    //delete my employee=============/myEmployee/
+    app.delete('/myEmployee/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const findUser = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $unset: { hrData: '' } }
+      );
+      const result = await teamCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //for admin check
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
