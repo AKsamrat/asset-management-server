@@ -73,6 +73,9 @@ async function run() {
       .db('assetManagement')
       .collection('payments');
     const teamCollection = client.db('assetManagement').collection('teams');
+    const requestCollection = client
+      .db('assetManagement')
+      .collection('requests');
 
     app.post('/jwt', async (req, res) => {
       const email = req.body;
@@ -281,10 +284,12 @@ async function run() {
       const search = req.query.search;
       const filter = req.query.filter;
       const sort = req.query.sort;
+      const availability = req.query.availability;
       let query = {
         productName: { $regex: search, $options: 'i' },
       };
       if (filter) query.productType = filter;
+      if (availability) query.status = availability;
       let options = {};
 
       const result = await assetCollection
@@ -350,6 +355,15 @@ async function run() {
     app.get('/assetsCount', async (req, res) => {
       const count = await assetCollection.estimatedDocumentCount();
       res.send({ count });
+    });
+
+    //request for asset=================>>>>>>>>>>>
+    app.post('/requestAsset', async (req, res) => {
+      // const id = req.params.id;
+      const requesterData = req.body;
+
+      const result = await requestCollection.insertOne(requesterData);
+      res.send(result);
     });
 
     //payment system implementation
