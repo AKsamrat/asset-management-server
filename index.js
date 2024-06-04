@@ -459,22 +459,31 @@ async function run() {
       const result = await requestCollection.updateOne(query, updateDoc);
       res.send(result);
     });
-    //Decrease asset quantity===========================
-    app.patch('/decrease-qty', async (req, res) => {
-      const id = req.body;
-      console.log(id);
+
+    // return policy and increase asset quantity===========================
+
+    app.patch('/increase-qty/:id', async (req, res) => {
+      const id = req.params.id;
+      const piD = req.body.assetId;
+      // console.log(piD);
+      const pQuery = { _id: new ObjectId(piD) };
       const query = { _id: new ObjectId(id) };
-      updateDoc = {
+      const updateDoc = {
         $set: {
-          $inc: { productQty: -1 },
+          reqStatus: 'returned',
         },
       };
+      const updateData = {
+        $inc: { productQty: 1 },
+      };
 
-      const result = await assetCollection.updateOne(query, updateDoc);
+      const PData = await assetCollection.updateOne(pQuery, updateData);
+
+      const result = await requestCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
-    //payment system implementation
+    //payment system implementation========================
 
     app.post('/create-payment-intent', async (req, res) => {
       const { price } = req.body;
