@@ -322,6 +322,52 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    //get all requested asset for employee ======<<<<<<<<<<<<<<
+
+    app.get('/requested-assets/:email', async (req, res) => {
+      const email = req.params.email;
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const search = req.query.search;
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      let query = {
+        reqEmail: email,
+      };
+      if (search) {
+        query = {
+          assetName: { $regex: search, $options: 'i' },
+        };
+      }
+      if (filter) query.assetType = filter;
+      if (sort) query.reqStatus = sort;
+
+      const result = await requestCollection
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    //get all requested asset for Hr manager ======<<<<<<<<<<<<<<
+
+    app.get('/requestedAssets-hrManger', async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const search = req.query.search;
+
+      let query = {
+        reqName: { $regex: search, $options: 'i' },
+      };
+
+      const result = await requestCollection
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
 
     //delete asset from database======-----------------
     app.delete('/asset/:id', async (req, res) => {
@@ -357,12 +403,74 @@ async function run() {
       res.send({ count });
     });
 
+    //for hr=====================
+    app.get('/requestAssetsCount', async (req, res) => {
+      const count = await requestCollection.estimatedDocumentCount();
+      res.send({ count });
+    });
+
+    //for employee=======================
+    app.get('/requestAssetsCountEmp/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { reqEmail: email };
+      // const result = await requestCollection.find(query).toArray();
+
+      const count = await requestCollection.estimatedDocumentCount();
+      res.send({ count });
+      // res.send(result);
+    });
+
     //request for asset=================>>>>>>>>>>>
     app.post('/requestAsset', async (req, res) => {
       // const id = req.params.id;
       const requesterData = req.body;
 
       const result = await requestCollection.insertOne(requesterData);
+      res.send(result);
+    });
+
+    //reject request from hr manager==================
+    app.delete('/reject-request/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await requestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //approve request===========================
+    app.patch('/approve-request/:id', async (req, res) => {
+      const id = req.params.id;
+      const piD = req.body.assetId;
+      console.log(piD);
+      const pQuery = { _id: new ObjectId(piD) };
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          reqStatus: 'approved',
+          appDate: new Date(),
+        },
+      };
+      const updateData = {
+        $inc: { productQty: -1 },
+      };
+
+      const PData = await assetCollection.updateOne(pQuery, updateData);
+
+      const result = await requestCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+    //Decrease asset quantity===========================
+    app.patch('/decrease-qty', async (req, res) => {
+      const id = req.body;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      updateDoc = {
+        $set: {
+          $inc: { productQty: -1 },
+        },
+      };
+
+      const result = await assetCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
