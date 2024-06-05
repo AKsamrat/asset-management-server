@@ -76,6 +76,9 @@ async function run() {
     const requestCollection = client
       .db('assetManagement')
       .collection('requests');
+    const messageCollection = client
+      .db('assetManagement')
+      .collection('messages');
 
     app.post('/jwt', async (req, res) => {
       const email = req.body;
@@ -428,6 +431,13 @@ async function run() {
         $set: assetData,
       };
       const result = await assetCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    // message section========================........>>>>>>>>>>>>>
+    app.post('/send-massage', async (req, res) => {
+      const messageData = req.body;
+      const result = await messageCollection.insertOne(messageData);
       res.send(result);
     });
 
