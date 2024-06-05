@@ -365,6 +365,15 @@ async function run() {
       const result = await requestCollection.find(query).toArray();
       res.send({ result, userData });
     });
+    //get all pending asset for Hr manager home page
+
+    app.get('/pending-requestHr', async (req, res) => {
+      const filter = req.query.filter;
+      let query = {};
+      if (filter) query.reqStatus = filter;
+      const result = await requestCollection.find(query).toArray();
+      res.send(result);
+    });
     //get all request  for employee home page
 
     app.get('/empAll-request/:email', async (req, res) => {
