@@ -349,7 +349,7 @@ async function run() {
         .toArray();
       res.send(result);
     });
-
+    //01777311537
     //get all pending asset for employee home page
 
     app.get('/pending-request/:email', async (req, res) => {
@@ -361,6 +361,28 @@ async function run() {
       if (filter) query.reqStatus = filter;
       const result = await requestCollection.find(query).toArray();
       res.send({ result, userData });
+    });
+    //get all request  for employee home page
+
+    app.get('/empAll-request/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { reqEmail: email };
+
+      var currentDate = new Date();
+      var lastMonthDate = new Date();
+      lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+
+      const result = await requestCollection
+        .find({
+          reqEmail: email,
+          reqDate: {
+            $gte: lastMonthDate.toISOString(),
+            $lt: currentDate.toISOString(),
+          },
+        })
+        .toArray();
+      // const result = await requestCollection.find(query).aggregate().toArray();
+      res.send(result);
     });
 
     //get all requested asset for Hr manager ======<<<<<<<<<<<<<<
