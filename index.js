@@ -350,6 +350,19 @@ async function run() {
       res.send(result);
     });
 
+    //get all pending asset for employee home page
+
+    app.get('/pending-request/:email', async (req, res) => {
+      const email = req.params.email;
+      const filter = req.query.filter;
+      const userQuery = { email: email };
+      const query = { reqEmail: email };
+      const userData = await userCollection.findOne(userQuery);
+      if (filter) query.reqStatus = filter;
+      const result = await requestCollection.find(query).toArray();
+      res.send({ result, userData });
+    });
+
     //get all requested asset for Hr manager ======<<<<<<<<<<<<<<
 
     app.get('/requestedAssets-hrManger', async (req, res) => {
