@@ -303,6 +303,20 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    //get all asset api==========<<<<<<<<<<<<<<<
+    app.get('/topReq-items/:email', async (req, res) => {
+      const size = parseInt(req.query.size);
+      const email = req.params.email;
+      const sort = req.query.sort;
+      const query = { posterEmail: email };
+
+      const result = await assetCollection
+        .find(query)
+        .sort({ productQty: sort === 'dec' ? -1 : 1 })
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
 
     //get all asset asset for employee ======<<<<<<<<<<<<<<
 
@@ -367,11 +381,13 @@ async function run() {
     });
     //get all pending asset for Hr manager home page
 
-    app.get('/pending-requestHr', async (req, res) => {
+    app.get('/pending-requestHr/:email', async (req, res) => {
+      const email = req.params.email;
       const filter = req.query.filter;
+      const size = 5;
       let query = {};
       if (filter) query.reqStatus = filter;
-      const result = await requestCollection.find(query).toArray();
+      const result = await requestCollection.find(query).limit(size).toArray();
       res.send(result);
     });
     //get all request  for employee home page
@@ -476,8 +492,13 @@ async function run() {
 
     //request for asset=================>>>>>>>>>>>
     app.post('/requestAsset', async (req, res) => {
-      // const id = req.params.id;
       const requesterData = req.body;
+      const id = requesterData.assetId;
+      const query = { _id: new ObjectId(id) };
+      const updateData = {
+        $inc: { reqCount: 1 },
+      };
+      const countPlus = await assetCollection.updateOne(query, updateData);
 
       const result = await requestCollection.insertOne(requesterData);
       res.send(result);
