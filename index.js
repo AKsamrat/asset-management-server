@@ -322,22 +322,30 @@ async function run() {
       const size = parseInt(req.query.size);
       const email = req.params.email;
       const sort = req.query.sort;
-      const query = { posterEmail: email };
-      const filter = 10;
-      // if (filter) query.productQty{$lt}
-      // {
-      //   query: {
-      //     productQty: {
-      //       $lt: 10;
-      //     }
-      //   }
-      // }
+
       const result = await assetCollection
         .find({ posterEmail: email, productQty: { $lt: 10 } })
         .sort({ productQty: sort === 'asc' ? 1 : -1 })
         .limit(size)
         .toArray();
       res.send(result);
+    });
+
+    ///pie chart data =============generate
+    app.get('/hr-pieChart/:email', async (req, res) => {
+      const email = req.params.email;
+      const filter = req.query.filter;
+      const filter2 = req.query.filter2;
+      let query = { posterEmail: email };
+      if (filter) query.productType = filter;
+      let query2 = { posterEmail: email };
+      if (filter2) query2.productType = filter2;
+      const returnable = await assetCollection.find(query).toArray();
+      const reCount = returnable.length;
+      const nonReturnable = await assetCollection.find(query2).toArray();
+      const nonCount = nonReturnable.length;
+      // console.log(reCount);
+      res.send({ reCount, nonCount });
     });
 
     //get all asset asset for employee ======<<<<<<<<<<<<<<
@@ -484,7 +492,23 @@ async function run() {
     // message section========================........>>>>>>>>>>>>>
     app.post('/send-massage', async (req, res) => {
       const messageData = req.body;
-      const result = await messageCollection.insertOne(messageData);
+      const email = messageData.empEmail;
+      const query = { reqEmail: email };
+      const empDetails = await requestCollection.findOne(query);
+      console.log(empDetails);
+      const updateDoc = {
+        ...messageData,
+        hrEmail: empDetails.posterEmail,
+      };
+      const result = await messageCollection.insertOne(updateDoc);
+      res.send(result);
+    });
+
+    //load employee query message=================,<<<<<<<<<<<<
+    app.get('/query-empMessage/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { hrEmail: email };
+      const result = await messageCollection.find(query).toArray();
       res.send(result);
     });
 
