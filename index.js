@@ -303,7 +303,7 @@ async function run() {
         .toArray();
       res.send(result);
     });
-    //get all asset api==========<<<<<<<<<<<<<<<
+    //get top requested asset api==========<<<<<<<<<<<<<<<
     app.get('/topReq-items/:email', async (req, res) => {
       const size = parseInt(req.query.size);
       const email = req.params.email;
@@ -312,7 +312,29 @@ async function run() {
 
       const result = await assetCollection
         .find(query)
-        .sort({ productQty: sort === 'dec' ? -1 : 1 })
+        .sort({ reqCount: sort === 'dec' ? -1 : 1 })
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+    //get limited stock items api==========<<<<<<<<<<<<<<<
+    app.get('/limitedStock-items/:email', async (req, res) => {
+      const size = parseInt(req.query.size);
+      const email = req.params.email;
+      const sort = req.query.sort;
+      const query = { posterEmail: email };
+      const filter = 10;
+      // if (filter) query.productQty{$lt}
+      // {
+      //   query: {
+      //     productQty: {
+      //       $lt: 10;
+      //     }
+      //   }
+      // }
+      const result = await assetCollection
+        .find({ posterEmail: email, productQty: { $lt: 10 } })
+        .sort({ productQty: sort === 'asc' ? 1 : -1 })
         .limit(size)
         .toArray();
       res.send(result);
@@ -385,7 +407,7 @@ async function run() {
       const email = req.params.email;
       const filter = req.query.filter;
       const size = 5;
-      let query = {};
+      let query = { posterEmail: email };
       if (filter) query.reqStatus = filter;
       const result = await requestCollection.find(query).limit(size).toArray();
       res.send(result);
