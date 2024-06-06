@@ -503,11 +503,31 @@ async function run() {
       const result = await messageCollection.insertOne(updateDoc);
       res.send(result);
     });
+    app.patch('/message-reply/:id', async (req, res) => {
+      const id = req.params.id;
+      const messageData = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          ...messageData,
+        },
+      };
+
+      const result = await messageCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
     //load employee query message=================,<<<<<<<<<<<<
     app.get('/query-empMessage/:email', async (req, res) => {
       const email = req.params.email;
       const query = { hrEmail: email };
+      const result = await messageCollection.find(query).toArray();
+      res.send(result);
+    });
+    //load employee query reply message=================,<<<<<<<<<<<<
+    app.get('/reply-empMessage/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { empEmail: email };
       const result = await messageCollection.find(query).toArray();
       res.send(result);
     });
