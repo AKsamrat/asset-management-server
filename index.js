@@ -157,9 +157,15 @@ async function run() {
     app.post('/add-employee/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
+      const hrData = req.body;
+      const email = hrData.hrEmail;
 
       const companyEmployee = await userCollection.findOne(query);
-      const result = await teamCollection.insertOne(companyEmployee);
+      const updateDoc = {
+        ...companyEmployee,
+        hrEmail: email,
+      };
+      const result = await teamCollection.insertOne(updateDoc);
       res.send(result);
     });
 
@@ -185,19 +191,41 @@ async function run() {
     });
 
     //for employee count
-    app.get('/employeeCount', async (req, res) => {
-      const count = await teamCollection.estimatedDocumentCount();
-      res.send({ count });
+    app.get('/employeeCount/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { hrEmail: email };
+      const count = await teamCollection.find(query).toArray();
+      res.send(count);
     });
 
-    //get my employee===============<<<<<<<<<<<<<<<<<<my-employee
-    app.get('/my-employee', async (req, res) => {
+    //get my employee===============<<<<<<<<<<<<<<<<<<hr manager
+    app.get('/my-employee/:email', async (req, res) => {
+      const email = req.params.email;
       // console.log(req.headers);
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
+      const query = { hrEmail: email };
 
       const result = await teamCollection
-        .find()
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+    //get my team===============<<<<<<<<<<<<<<<<<<for employee
+    app.get('/my-team/:email', async (req, res) => {
+      const empEmail = req.params.email;
+      const empQuery = { email: empEmail };
+      const userData = await userCollection.findOne(empQuery);
+      const email = userData.hrData.hrEmail;
+      // console.log(req.headers);
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const query = { hrEmail: email };
+
+      const result = await teamCollection
+        .find(query)
         .skip(page * size)
         .limit(size)
         .toArray();
@@ -252,23 +280,6 @@ async function run() {
 
     //make admin
 
-    app.patch(
-      '/users/admin/:id',
-      verifyToken,
-      verifyAdmin,
-      async (req, res) => {
-        const id = req.params.id;
-        const filter = { _id: new ObjectId(id) };
-        updateDoc = {
-          $set: {
-            role: 'admin',
-          },
-        };
-        const result = await userCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      }
-    );
-
     //asset add api =========================>>>>
     app.post('/addAsset', async (req, res) => {
       const assetData = req.body;
@@ -281,7 +292,8 @@ async function run() {
     });
 
     //get all asset api==========<<<<<<<<<<<<<<<
-    app.get('/all-assets', async (req, res) => {
+    app.get('/all-assets/:email', async (req, res) => {
+      const email = req.params.email;
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
       const search = req.query.search;
@@ -289,8 +301,11 @@ async function run() {
       const sort = req.query.sort;
       const availability = req.query.availability;
       let query = {
-        productName: { $regex: search, $options: 'i' },
+        posterEmail: email,
       };
+      if (search) {
+        query = { productName: { $regex: search, $options: 'i' } };
+      }
       if (filter) query.productType = filter;
       if (availability) query.status = availability;
       let options = {};
@@ -337,12 +352,12 @@ async function run() {
       const filter = req.query.filter;
       const filter2 = req.query.filter2;
       let query = { posterEmail: email };
-      if (filter) query.productType = filter;
+      if (filter) query.assetType = filter;
       let query2 = { posterEmail: email };
-      if (filter2) query2.productType = filter2;
-      const returnable = await assetCollection.find(query).toArray();
+      if (filter2) query2.assetType = filter2;
+      const returnable = await requestCollection.find(query).toArray();
       const reCount = returnable.length;
-      const nonReturnable = await assetCollection.find(query2).toArray();
+      const nonReturnable = await requestCollection.find(query2).toArray();
       const nonCount = nonReturnable.length;
       // console.log(reCount);
       res.send({ reCount, nonCount });
@@ -445,14 +460,18 @@ async function run() {
 
     //get all requested asset for Hr manager ======<<<<<<<<<<<<<<
 
-    app.get('/requestedAssets-hrManger', async (req, res) => {
+    app.get('/requestedAssets-hrManger/:email', async (req, res) => {
+      const email = req.params.email;
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
       const search = req.query.search;
 
       let query = {
-        reqName: { $regex: search, $options: 'i' },
+        posterEmail: email,
       };
+      if (search) {
+        query = { reqName: { $regex: search, $options: 'i' } };
+      }
 
       const result = await requestCollection
         .find(query)
@@ -510,6 +529,7 @@ async function run() {
       const updateDoc = {
         $set: {
           ...messageData,
+          status: 'replied',
         },
       };
 
@@ -644,6 +664,15 @@ async function run() {
       // payment.menuItemId = payment.menuItemId.map(id => new ObjectId(id));
       // payment.cartId = payment.cartId.map(id => new ObjectId(id));
       const result = await paymentCollection.insertOne(payment);
+
+      res.send(result);
+    });
+
+    //mr manager payment check
+    app.get('/payment-check/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
 
       res.send(result);
     });
