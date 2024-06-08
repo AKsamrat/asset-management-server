@@ -10,7 +10,11 @@ const port = process.env.PORT || 5000;
 const app = express();
 
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://asset-management-3fe08.web.app',
+  ],
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -20,10 +24,10 @@ app.use(express.json());
 
 // verify jwt middleware
 const verifyToken = (req, res, next) => {
+  console.log('inside verify token', req.headers.authorization);
   if (!req.headers.authorization) {
     return res.status(401).send({ message: 'unauthorized access' });
   }
-  // console.log('inside verify token', req.headers);
 
   const token = req.headers.authorization.split(' ')[1];
 
@@ -37,21 +41,6 @@ const verifyToken = (req, res, next) => {
     req.decoded = decoded;
     next();
   });
-
-  // const token = req.cookies?.token;
-  // if (!token) return res.status(401).send({ message: 'unauthorized access' });
-  // if (token) {
-  //   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-  //     if (err) {
-  //       console.log(err);
-  //       return res.status(401).send({ message: 'unauthorized access' });
-  //     }
-  //     console.log(decoded);
-
-  //     req.user = decoded;
-  //     next();
-  //   });
-  // }
 };
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nj7eiar.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -86,14 +75,6 @@ async function run() {
         expiresIn: '365d',
       });
       res.send({ token });
-
-      // res
-      //   .cookie('token', token, {
-      //     httpOnly: true,
-      //     secure: process.env.NODE_ENV === 'production',
-      //     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      //   })
-      //   .send({ success: true });
     });
 
     // Clear token on logout
@@ -113,7 +94,7 @@ async function run() {
       const email = req.decoded.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
-      const isAdmin = user?.role === 'admin';
+      const isAdmin = user?.role === 'Hr Manager';
       if (!isAdmin) {
         return res.status(403).send({ message: 'forbidden access' });
       }
@@ -125,7 +106,7 @@ async function run() {
     //user related
 
     //load all user
-    app.get('/all-users', async (req, res) => {
+    app.get('/all-users', verifyToken, verifyAdmin, async (req, res) => {
       // console.log(req.headers);
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
@@ -199,27 +180,33 @@ async function run() {
     });
 
     //get my employee===============<<<<<<<<<<<<<<<<<<hr manager
-    app.get('/my-employee/:email', async (req, res) => {
-      const email = req.params.email;
-      // console.log(req.headers);
-      const size = parseInt(req.query.size);
-      const page = parseInt(req.query.page);
-      const query = { hrEmail: email };
+    app.get(
+      '/my-employee/:email',
+      verifyToken,
+      verifyAdmin,
 
-      const result = await teamCollection
-        .find(query)
-        .skip(page * size)
-        .limit(size)
-        .toArray();
-      res.send(result);
-    });
+      async (req, res) => {
+        const email = req.params.email;
+        // console.log(req.headers);
+        const size = parseInt(req.query.size);
+        const page = parseInt(req.query.page);
+        const query = { hrEmail: email };
+
+        const result = await teamCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .toArray();
+        res.send(result);
+      }
+    );
     //get my team===============<<<<<<<<<<<<<<<<<<for employee
     app.get('/my-team/:email', async (req, res) => {
       const empEmail = req.params.email;
       const empQuery = { email: empEmail };
       const userData = await userCollection.findOne(empQuery);
-      const email = userData.hrData.hrEmail;
-      // console.log(req.headers);
+      const hrData = userData?.hrData;
+      const email = hrData?.hrEmail;
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
       const query = { hrEmail: email };
@@ -264,6 +251,21 @@ async function run() {
       };
       const result = await userCollection.updateOne(query, updateDoc, option);
 
+      res.send(result);
+    });
+
+    //profile update================
+    app.patch('/profile-update/:email', async (req, res) => {
+      const email = req.params.email;
+      const updateData = req.body;
+      const query = { email: email };
+      const updateDoc = {
+        $set: {
+          name: updateData.name,
+          updateDate: new Date(),
+        },
+      };
+      const result = await userCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
@@ -460,26 +462,31 @@ async function run() {
 
     //get all requested asset for Hr manager ======<<<<<<<<<<<<<<
 
-    app.get('/requestedAssets-hrManger/:email', async (req, res) => {
-      const email = req.params.email;
-      const size = parseInt(req.query.size);
-      const page = parseInt(req.query.page);
-      const search = req.query.search;
+    app.get(
+      '/requestedAssets-hrManger/:email',
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const size = parseInt(req.query.size);
+        const page = parseInt(req.query.page);
+        const search = req.query.search;
 
-      let query = {
-        posterEmail: email,
-      };
-      if (search) {
-        query = { reqName: { $regex: search, $options: 'i' } };
+        let query = {
+          posterEmail: email,
+        };
+        if (search) {
+          query = { reqName: { $regex: search, $options: 'i' } };
+        }
+
+        const result = await requestCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .toArray();
+        res.send(result);
       }
-
-      const result = await requestCollection
-        .find(query)
-        .skip(page * size)
-        .limit(size)
-        .toArray();
-      res.send(result);
-    });
+    );
 
     //delete asset from database======-----------------
     app.delete('/asset/:id', async (req, res) => {
